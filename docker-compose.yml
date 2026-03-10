@@ -1,7 +1,7 @@
-
+version: "3.9"
 
 services:
-  postgres:
+  db:
     image: postgres:15
     environment:
       POSTGRES_DB: payment_gateway
@@ -15,15 +15,40 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
   api:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     environment:
-      DATABASE_URL: postgresql://gateway_user:gateway_pass@postgres:5432/payment_gateway
+      DATABASE_URL: postgresql://gateway_user:gateway_pass@db:5432/payment_gateway
+      REDIS_URL: redis://redis:6379/0
+      TEST_MODE: "true"
     ports:
       - "8000:8000"
     depends_on:
-      postgres:
+      db:
         condition: service_healthy
+      redis:
+        condition: service_started
+
+  worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.worker
+    environment:
+      DATABASE_URL: postgresql://gateway_user:gateway_pass@db:5432/payment_gateway
+      REDIS_URL: redis://redis:6379/0
+      TEST_MODE: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
 
   frontend:
     build: ./frontend

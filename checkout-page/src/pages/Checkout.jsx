@@ -11,6 +11,7 @@ export default function Checkout() {
   const [paymentId, setPaymentId] = useState(null);
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
+  const embedded = new URLSearchParams(window.location.search).get("embedded") === "true";
 
   // Fetch order details (PUBLIC)
   useEffect(() => {
@@ -35,10 +36,20 @@ export default function Checkout() {
         .then(data => {
           if (data.status !== "processing") {
             clearInterval(interval);
-            if (data.status === "success") {
-              window.location.href = `/success?payment_id=${paymentId}`;
+            if (embedded) {
+              window.parent.postMessage(
+                {
+                  type: data.status === "success" ? "payment_success" : "payment_failed",
+                  data,
+                },
+                "*"
+              );
             } else {
-              window.location.href = `/failure`;
+              if (data.status === "success") {
+                window.location.href = `/success?payment_id=${paymentId}`;
+              } else {
+                window.location.href = `/failure`;
+              }
             }
           }
         });

@@ -198,7 +198,7 @@ class TestPaymentEndpoints:
         assert response.status_code == 201, f"Expected 201, got {response.status_code}: {response.text}"
         data = response.json()
         assert data["method"] == "upi"
-        assert data["status"] == "captured", "Authenticated UPI payment should have 'captured' status"
+        assert data["status"] == "pending", "Authenticated payment should start in 'pending' status"
         assert data["order_id"] == order_id
         assert "id" in data
         assert "amount" in data
@@ -218,7 +218,7 @@ class TestPaymentEndpoints:
         assert response.status_code == 201, f"Expected 201, got {response.status_code}: {response.text}"
         data = response.json()
         assert data["method"] == "card"
-        assert data["status"] == "failed", "Card payment should have 'failed' status"
+        assert data["status"] == "pending", "Authenticated payment should start in 'pending' status"
         assert data["order_id"] == order_id
     
     def test_create_payment_authenticated_invalid_order(self):
@@ -404,6 +404,20 @@ class TestEndpointCoverage:
         # In a real scenario, you'd use coverage tools
         assert len(expected_endpoints) == 6, "Should have 6 main endpoints"
         # All endpoints are tested in the classes above
+
+
+class TestJobStatusEndpoint:
+    """Tests the job queue status endpoint"""
+
+    def test_job_status_endpoint_exists(self):
+        response = requests.get(f"{BASE_URL}/api/v1/test/jobs/status", timeout=5)
+        assert response.status_code == 200, f"Expected 200, got {response.status_code}"
+        data = response.json()
+        assert "pending" in data
+        assert "processing" in data
+        assert "completed" in data
+        assert "failed" in data
+        assert "worker_status" in data
 
 
 @pytest.fixture(scope="session", autouse=True)

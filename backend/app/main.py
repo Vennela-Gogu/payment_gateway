@@ -3,7 +3,7 @@ from sqlalchemy import text
 from app.database import engine
 from app.schemas import OrderCreate, PaymentCreate
 from app.auth import authenticate
-from app.routes import orders, payments, health
+from app.routes import orders, payments, health, webhooks, test_jobs
 import time, random, string
 
 app = FastAPI(
@@ -63,7 +63,20 @@ app.openapi = custom_openapi
 # Include routers
 app.include_router(orders.router)
 app.include_router(payments.router)
+app.include_router(webhooks.router)
+app.include_router(test_jobs.router)
 app.include_router(health.router)
+
+
+@app.on_event("startup")
+def startup_event():
+    """Run schema migrations and seed data on startup."""
+    try:
+        from app.seed import seed
+        seed()
+    except Exception:
+        # Best effort; if DB isn't ready yet, it will be handled by migration scripts.
+        pass
 
 def gen_id(prefix):
     return prefix + "_" + "".join(
@@ -129,7 +142,7 @@ def create_order(
     }
 
 # -------- PAYMENTS --------
-@app.post("/api/v1/payments", status_code=201)
+# @app.post("/api/v1/payments", status_code=201)  # deprecated: handled by routes/payments.py
 def create_payment(
     payload: PaymentCreate,
     merchant=Depends(authenticate)
